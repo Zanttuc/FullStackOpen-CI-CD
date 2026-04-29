@@ -10,4 +10,12 @@ describe("Pokedex", () => {
       ),
     ).toBeVisible();
   });
+
+  test("can navigate to ivysaur page", async ({ page }) => {
+    await page.goto("");
+    await page.getByRole("link", { name: "ivysaur" }).click();
+
+    await expect(page).toHaveURL(/\/pokemon\/ivysaur/);
+    await expect(page.getByText("chlorophyll")).toBeVisible();
+  });
 });
