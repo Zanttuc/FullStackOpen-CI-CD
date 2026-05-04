@@ -15,3 +15,7 @@ Start by running `npm install` inside the project folder
 ## Link to deployed app
 
 https://fullstackopen-ci-cd-f6gz.onrender.com
+
+## Link to the other repository for tasks 21 and 22
+
+https://github.com/Zanttuc/FullStackOpen-CI-CD-Exercise
