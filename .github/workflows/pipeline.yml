@@ -68,8 +68,8 @@ jobs:
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           color: 0x00ff00
   notify_failure:
-    needs: [build_and_test, deploy, tag_release, notify_success]
-    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    needs: [build_and_test, deploy]
+    if: ${{ always() && (needs.build_and_test.result == 'failure' || needs.deploy.result == 'failure') }}
     runs-on: ubuntu-latest
     steps:
       - name: Discord failure notification
