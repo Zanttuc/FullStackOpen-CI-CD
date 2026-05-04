@@ -9,7 +9,7 @@ on:
     types: [opened, synchronize]
 
 jobs:
-  simple_deployment_pipeline:
+  build_and_test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -28,11 +28,15 @@ jobs:
         run: npx playwright install --with-deps chromium
       - name: Run Playwright tests
         run: npm run test:e2e
+  deploy:
+    needs: [build_and_test]
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Trigger deployment
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
         run: curl ${{ secrets.RENDER_DEPLOY_HOOK }}
   tag_release:
-    needs: [simple_deployment_pipeline]
+    needs: [deploy]
     if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') }}
     runs-on: ubuntu-latest
     permissions:
@@ -46,26 +50,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
-  notify_discord:
-    needs: [simple_deployment_pipeline, tag_release]
-    if: ${{ always() }}
+  notify_success:
+    needs: [deploy]
+    if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') && needs.deploy.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - name: Discord success notification
-        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') && needs.simple_deployment_pipeline.result == 'success' && needs.tag_release.result == 'success' }}
         uses: sarisia/actions-status-discord@v1.16.0
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
           status: success
           title: New version deployed successfully
           description: |
-            Deployment and release tagging completed.
+            Deployment completed successfully.
             Branch: ${{ github.ref_name }}
             Commit: ${{ github.sha }}
             Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
           color: 0x00ff00
+  notify_failure:
+    needs: [build_and_test, deploy, tag_release, notify_success]
+    if: ${{ always() && contains(needs.*.result, 'failure') }}
+    runs-on: ubuntu-latest
+    steps:
       - name: Discord failure notification
-        if: ${{ contains(needs.*.result, 'failure') }}
         uses: sarisia/actions-status-discord@v1.16.0
         with:
           webhook: ${{ secrets.DISCORD_WEBHOOK }}
