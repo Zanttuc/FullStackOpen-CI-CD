@@ -46,3 +46,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DEFAULT_BUMP: patch
+  notify_discord:
+    needs: [simple_deployment_pipeline, tag_release]
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Discord success notification
+        if: ${{ github.event_name == 'push' && !contains(join(github.event.commits.*.message, ' '), '#skip') && needs.simple_deployment_pipeline.result == 'success' && needs.tag_release.result == 'success' }}
+        uses: sarisia/actions-status-discord@v1.16.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: success
+          title: New version deployed successfully
+          description: |
+            Deployment and release tagging completed.
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          color: 0x00ff00
+      - name: Discord failure notification
+        if: ${{ contains(needs.*.result, 'failure') }}
+        uses: sarisia/actions-status-discord@v1.16.0
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: failure
+          title: Job failed
+          description: |
+            Job failed during the deployment pipeline.
+            Workflow: ${{ github.workflow }}
+            Event: ${{ github.event_name }}
+            Branch: ${{ github.ref_name }}
+            Commit: ${{ github.sha }}
+            Triggered by: ${{ github.actor }}
+            Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          color: 0x990000
